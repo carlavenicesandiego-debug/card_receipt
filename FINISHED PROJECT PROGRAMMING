@@ -1,0 +1,246 @@
+# TEST
+# Project Programming
+# Objectives - Create a log in account, create money converter and print a receipt.
+while True:
+    from datetime import datetime #datetime → ginagamit para makuha ang current date sa receipt.
+    import pandas as pd #pandas → ginagamit para magbasa at magsulat ng data sa Excel file.
+
+    # Read Excel File
+    data = pd.read_excel("Accounts_Programming.xlsx")
+    data.columns = data.columns.str.strip()
+    data["password"] = data["password"].astype(str)
+
+    # Login Attempts
+    max_attempts = 3
+    attempts = 0
+
+    while attempts < max_attempts:
+
+        username = input("Enter username: ").lower()
+        password = input("Enter password: ")
+
+        # Check username and password in Excel
+        user = data[
+            (data["username"] == username) &
+            (data["password"] == password)
+        ]
+
+        if not user.empty: # Tinitingnan nito kung may nahanap na matching account sa Excel file.
+            print("\nAccess granted! Welcome to UniCash.\n")
+            php_balance = float(user.iloc[0]["php_balance"]) # Kinukuha nito ang PHP at USD balance ng logged-in user mula sa Excel file.
+            usd_balance = float(user.iloc[0]["usd_balance"])
+            break
+
+        else:
+            attempts += 1 # Dinadagdagan nito ang bilang ng failed login attempts kapag mali ang username o password.
+            print(f"\nInvalid username or password.")
+            print(f"Attempts left: {max_attempts - attempts}\n")
+
+    if attempts == max_attempts:
+        print("Too many failed attempts. Access denied.")
+        exit()
+    print("Welcome to -- UniCash -- The most convenient and trusted for your money!!\n")
+
+    choices = [
+        ["Check the balance"],
+        ["Money Conversion"],
+        ["Cash In"],
+        ["Padala Pay"]
+    ]
+
+    for i in range(len(choices)):
+        print(i + 1, "-", choices[i][0])
+
+    php_balance = float(user.iloc[0]["php_balance"])
+    usd_balance = float(user.iloc[0]["usd_balance"])
+
+    print("\n")
+
+    while True: # Main Menu Loop/Pinapanatiling bukas ang menu hanggang piliin ng user ang logout option.
+
+        Selection = int(input("Enter your choice (1-4) or 0 to Exit: "))
+
+        if Selection == 0:
+            # SAVE BALANCE BEFORE EXIT
+            data.loc[data["username"] == username, "php_balance"] = php_balance # Ina-update nito ang bagong balance ng user sa Excel file bago mag-logout.
+            data.loc[data["username"] == username, "usd_balance"] = usd_balance # Ina-update nito ang bagong balance ng user sa Excel file bago mag-logout.
+
+            data.to_excel("Accounts_Programming.xlsx", index=False) # Sine-save nito ang updated data pabalik sa Excel file.
+            print(f"Logging out {username}...\n")
+            break
+
+        elif Selection == 1:
+
+            print("\n======================================")
+            print("            UNI CASH WALLET           ")
+            print("======================================")
+            print(f"Account Holder : {username}")
+            print("--------------------------------------")
+            # .2f is formatting for 2 decimal places
+            print(f"PHP Balance    : ₱{php_balance:.2f}")
+            print(f"USD Balance    : ${usd_balance:.2f}")
+            print("======================================\n")
+
+        elif Selection == 2:
+
+            print("\nDigital Money Conversion 2026")
+            print("1. PHP - USD")
+            print("2. USD - PHP")
+
+            choose = int(input("Choose: "))
+
+            if choose == 1:
+
+                currency = float(input("Enter PHP amount to convert: "))
+
+                if currency <= php_balance:
+
+                    usd = currency * 0.018
+
+                    php_balance -= currency # Binabawasan nito ang PHP balance at dinadagdagan ang USD balance pagkatapos ng conversion.
+                    usd_balance += usd
+
+                    print(f"You converted ₱{currency} into ${usd:.2f}\n")
+
+                else:
+                    print("Insufficient PHP balance!")
+                    print("Please add balance to your account first!\n")
+
+            elif choose == 2:
+
+                currency = float(input("Enter USD amount to convert: "))
+
+                if currency <= usd_balance:
+
+                    php = currency * 62
+
+                    usd_balance -= currency
+                    php_balance += php
+
+                    print(f"You converted ${currency} into ₱{php:.2f}\n")
+
+                else:
+                    print("Insufficient USD balance!")
+                    print("Please add balance to your account first!\n")
+            else:
+                print("Invalid Choice!")
+
+        elif Selection == 3:
+            print("What balance do you want to add?")
+            print("1. PHP")
+            print("2. USD\n")
+
+            select = int(input("Choose (1-2): "))
+            if select == 1:
+                amount = float(input("Enter amount to Cash In: "))
+
+                php_balance += amount # Dinadagdagan nito ang balance ng user kapag nag-cash in.
+                # SAVE TO EXCEL
+                data.loc[data["username"] == username,
+                         "php_balance"] = php_balance # Ina-update nito ang bagong balance sa Excel file pagkatapos mag-cash in.
+                data.to_excel("Accounts_Programming.xlsx", index=False)
+
+                print(f"Your new balance is ₱{php_balance}\n")
+            elif select == 2:
+                amount = float(input("Enter amount to Cash In: "))
+
+                usd_balance += amount
+                # SAVE TO EXCEL
+                data.loc[data["username"] == username,
+                         "usd_balance"] = usd_balance
+                data.to_excel("Accounts_Programming.xlsx", index=False)
+
+                print(f"Your new balance is ${usd_balance}\n")
+            else:
+                print("Invalid Choice!")
+
+        elif Selection == 4:
+
+            print("\nWelcome to Padala Pay\n")
+
+            print("What currency do you want to send?")
+            print("1. PHP")
+            print("2. USD\n")
+
+            currency_choice = int(input("Choose (1-2): "))
+            receiver = input("Enter receiver name: ").lower()
+            # Check if receiver exists
+            if receiver not in data["username"].values: # Tinitingnan kung existing ang receiver account sa Excel file.
+                print("Receiver account does not exist!\n")
+                continue
+
+            # PHP
+            if currency_choice == 1:
+
+                total_amount = float(input("Enter amount to transfer: "))
+
+                if total_amount <= php_balance:
+
+                    php_balance -= total_amount # Binabawasan nito ang balance ng sender pagkatapos magpadala ng pera.
+                    # Add money to receiver
+                    data.loc[data["username"] ==
+                             receiver.lower(), "php_balance"] += total_amount # Dinadagdagan nito ang balance ng receiver sa Excel file.
+
+                    # Save sender balance
+                    data.loc[data["username"] == username,
+                             "php_balance"] = php_balance
+
+                    # Save to Excel
+                    data.to_excel("Accounts_Programming.xlsx", index=False)
+
+                    current_time = datetime.now()
+                    date = current_time.strftime("%Y-%m-%d") # Kinukuha nito ang current date upang mailagay sa receipt.
+
+                    print("\n========== BANK RECEIPT ==========")
+                    print(" UniCash")
+                    print("==================================")
+                    print(f"Sender Name   : {username}")
+                    print(f"Receiver Name : {receiver}")
+                    print(f"Amount Sent   : ₱{total_amount}")
+                    print(f"Balance Left  : ₱{php_balance}")
+                    print(f"Date          : {date}")
+                    print("==================================")
+                    print(f"Your current balance now: ₱{php_balance}")
+                    print("==================================\n")
+                else:
+                    print("Insufficient Balance!\n")
+
+            # USD
+            elif currency_choice == 2:
+
+                total_amount = float(input("Enter amount to transfer: "))
+
+                if total_amount <= usd_balance:
+
+                    # Deduct sender balance
+                    usd_balance -= total_amount
+
+                    # Add to receiver balance
+                    data.loc[data["username"] ==
+                             receiver.lower(), "usd_balance"] += total_amount
+
+                    # Update sender balance
+                    data.loc[data["username"] == username,
+                             "usd_balance"] = usd_balance
+
+                    # Save to Excel
+                    data.to_excel("Accounts_Programming.xlsx", index=False)
+
+                    current_time = datetime.now()
+                    date = current_time.strftime("%Y-%m-%d")
+
+                    print("\n========== BANK RECEIPT ==========")
+                    print(" UniCash")
+                    print("==================================")
+                    print(f"Sender Name   : {username}")
+                    print(f"Receiver Name : {receiver}")
+                    print(f"Amount Sent   : ${total_amount}")
+                    print(f"Balance Left  : ${usd_balance}")
+                    print(f"Date          : {date}")
+                    print("==================================")
+                    print(f"Your current balance now: ${usd_balance}")
+                    print("==================================\n")
+
+        else:
+            print("Invalid choice!\n") # Nagpapakita ito ng error message kapag mali ang input ng user.
+
